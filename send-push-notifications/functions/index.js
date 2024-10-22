@@ -10,6 +10,7 @@
 const { onValueCreated } = require("firebase-functions/v2/database");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
+const { after } = require("node:test");
 
 const region = "asia-southeast1"
 
@@ -68,6 +69,28 @@ exports.pushNotificationOnChatMessage = onValueCreated(
         await sendChatMessages(roomId, messageId, data);
     },
 );
+
+exports.pushNotificationOnData = onValueCreated({
+    ref: "data/{dataId}",
+}, async (event) => {
+    console.log('pushNotificationOnData() begins;', event);
+});
+
+
+exports.pushNotificationOnComment = onValueCreated({
+    ref: "comment/{commentId}",
+}, async (event) => {
+    console.log('pushNotificationOnComment() begins;', event);
+});
+
+exports.pushNotificationOnLike = onValueCreated({
+    ref: "like/{likeId}",
+}, async (event) => {
+    console.log('pushNotificationOnLike() begins;', event);
+});
+
+
+
 
 /**
  * Returns the FCM tokens of the users.
@@ -205,11 +228,13 @@ const sendPushNotifications = async (messageBatches, id) => {
     var numFailed = 0;
 
     const ref = admin.database().ref('fcm-results').push();
-    await ref.set({
+    const beforeLogData = {
         id,
         status: "started",
         startedAt: new Date().toISOString(),
-    });
+    };
+    if (debugLog) console.log(beforeLogData);
+    await ref.set(beforeLogData);
 
     await Promise.all(
         messageBatches.map(async (messages) => {
@@ -223,12 +248,14 @@ const sendPushNotifications = async (messageBatches, id) => {
         })
     );
 
-    await ref.update({
+    const afterLogData = {
         status: "finished",
         num_sent: numSent,
         num_failed: numFailed,
         finishedAt: new Date().toISOString(),
-    });
+    };
+    if (debugLog) console.log(afterLogData);
+    await ref.update(afterLogData);
 }
 
 

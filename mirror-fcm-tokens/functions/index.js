@@ -12,7 +12,7 @@ exports.mirrorFcmTokens = onDocumentCreated("/users/{uid}/fcm_tokens/{documentId
             return;
         }
         const data = snapshot.data();
-        await admin.database().ref("/mirrored-fcm-tokens").child(data.token).set(event.params.uid);
+        await admin.database().ref("/mirrored-fcm-tokens").child(data.fcm_token).set(event.params.uid);
     },
 );
 
