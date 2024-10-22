@@ -25,6 +25,20 @@ exports.tmpUsers = onValueWritten(
     },
 );
 
+exports.testFunc = onValueWritten(
+    {
+        ref: "/users/{uid}",
+        region,
+    },
+    async (event) => {
+        logger.log('triggered at ' + new Date().toISOString());
+        console.log(event.data.after.val());
+        return await doSomething(event.params.uid, event.data.after.val());
+    },
+);
+
+
+
 
 exports.doSomething = async (uid, data) => {
     // Do something
