@@ -17,7 +17,7 @@ const region = "asia-southeast1"
 const batchCount = 3;
 
 
-exports.makeuppercase = onValueCreated(
+exports.listenToChatMessage = onValueCreated(
     {
         ref: "/chat/messages/{roomId}/{messageId}",
         /**
