@@ -15,9 +15,10 @@ const region = "asia-southeast1"
 
 
 const batchCount = 3;
+const debugLog = true;
 
 
-exports.listenToChatMessage = onValueCreated(
+exports.pushNotificationOnChatMessage = onValueCreated(
     {
         ref: "/chat/messages/{roomId}/{messageId}",
         /**
@@ -57,14 +58,14 @@ exports.listenToChatMessage = onValueCreated(
         /** Whether failed executions should be delivered again. */
         // retry ?: boolean | Expression < boolean > | ResetValue;
     },
-    (event) => {
+    async (event) => {
         // Grab the current value of what was written to the Realtime Database.
         const data = event.data.val();
         const roomId = event.params.roomId;
         const messageId = event.params.messageId;
         console.log("roomId: ", roomId, ", messageId: ", messageId, ", data: ", data);
 
-        return sendChatMessages(roomId, messageId, data);
+        await sendChatMessages(roomId, messageId, data);
     },
 );
 
@@ -162,7 +163,7 @@ const sendChatMessages = async (roomId, messageId, data) => {
     const uids = await getChatRoomUsers(roomId);
     const tokens = await getUserTokens(uids);
 
-    console.log('tokens: ', tokens);
+    if (debugLog) console.log('tokens: ', tokens);
 
     const isSingleChat = roomId.indexOf('---') >= 0;
     const groupChat = !isSingleChat;
@@ -192,7 +193,6 @@ const sendChatMessages = async (roomId, messageId, data) => {
 
     await sendPushNotifications(messageBatches, '/chat/rooms/' + roomId + '/messages/' + messageId);
 
-
 }
 
 /**
@@ -213,7 +213,10 @@ const sendPushNotifications = async (messageBatches, id) => {
 
     await Promise.all(
         messageBatches.map(async (messages) => {
-            console.log(messages.tokens.length, "messages to send");
+            if (debugLog) {
+                console.log('sendPushNotifications():', messages.tokens.length, "messages to send");
+                console.log(messages);
+            }
             const response = await admin.messaging().sendEachForMulticast(messages);
             numSent += response.successCount;
             numFailed += response.failureCount;
@@ -221,7 +224,7 @@ const sendPushNotifications = async (messageBatches, id) => {
     );
 
     await ref.update({
-        status: "succeeded",
+        status: "finished",
         num_sent: numSent,
         num_failed: numFailed,
         finishedAt: new Date().toISOString(),
