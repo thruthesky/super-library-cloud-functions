@@ -1,15 +1,11 @@
 
-
-
 const admin = require("firebase-admin");
 const { createUser } = require(".");
 const { describe, test } = require("node:test");
 const assert = require("assert");
 
-
 admin.initializeApp();
 const password = '12W45a,*u';
-
 
 describe('Create account test', () => {
     test('Failure test: input data test', async () => {

@@ -8,7 +8,6 @@
  * Note that,
  * - The account will be created in the remote Firebase project since there is no Authentication emulator.
  */
-
 const admin = require("firebase-admin");
 const functionTest = require('firebase-functions-test')();
 // after firebase-functions-test has been initialized
@@ -22,19 +21,13 @@ admin.initializeApp({
 
 describe('Create account test', () => {
     test('Success test: input data test', async () => {
-
         const wrapped = functionTest.wrap(indexjs.createEmailPasswordAccount);
-
         const re = await wrapped({
             data: {
                 email: 'e2e-test@email.com',
                 password: '12,*W45a',
             },
         });
-
         console.log(re);
-
-
     });
-
 });
