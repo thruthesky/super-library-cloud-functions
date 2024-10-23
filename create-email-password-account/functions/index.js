@@ -6,7 +6,7 @@ exports.createEmailPasswordAccount = onCall(async (request) => {
     if (typeof result === "object" && result.uid) {
         return result;
     } else {
-        throw new HttpsError("internal", result);
+        throw new HttpsError("internal", result.code + ': ' + result.message, result);
     }
 });
 
@@ -24,11 +24,17 @@ exports.createUser = async (data) => {
 
     // Checking email.
     if (!(typeof email === "string") || email.length === 0) {
-        return { code: 'invalid-email', message: 'The function must be called with "email" containing the user\'s email address.' };
+        return {
+            code: 'invalid-email',
+            message: 'The function must be called with "email" containing the user\'s email address.'
+        };
     }
     // Checking password.
     if (!(typeof password === "string") || email.length < 6) {
-        return { code: 'invalid-password', message: 'The function must be called with "password" containing the user\'s password longer than 5 characters.' };
+        return {
+            code: 'invalid-password',
+            message: 'The function must be called with "password" containing the user\'s password longer than 5 characters.'
+        };
     }
 
     try {

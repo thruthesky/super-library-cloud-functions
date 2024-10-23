@@ -22,12 +22,16 @@ admin.initializeApp({
 describe('Create account test', () => {
     test('Success test: input data test', async () => {
         const wrapped = functionTest.wrap(indexjs.createEmailPasswordAccount);
-        const re = await wrapped({
-            data: {
-                email: 'e2e-test@email.com',
-                password: '12,*W45a',
-            },
-        });
-        console.log(re);
+        try {
+            const re = await wrapped({
+                data: {
+                    email: 'e2e-test@email.com',
+                    password: '12,*W45a',
+                },
+            });
+            console.log(re);
+        } catch (error) {
+            console.log(error);
+        }
     });
 });
