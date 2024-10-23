@@ -15,10 +15,20 @@ const tokens = {
     // ],
     // cvA9UISJHkavljsyxfa_81:APA91bHhuCUPJqp24d2vIO84-K-TtI_mi0f23oxxyDj9MbNQsD8nyG1r7ices7_IpcSA-y1uwucY3eodLOP_jaSYcjwTcR7teTMq0rO3dMjoeXM_8Pcb2znjFNratoFDOqFRR5j3o2RR
 
-    'S6lXfLJErXQLQUvXcmu9d8wbJ6D3': [
-        'cvA9UISJHkavljsyxfa_81:APA91bHhuCUPJqp24d2vIO84-K-TtI_mi0f23oxxyDj9MbNQsD8nyG1r7ices7_IpcSA-y1uwucY3eodLOP_jaSYcjwTcR7teTMq0rO3dMjoeXM_8Pcb2znjFNratoFDOqFRR5j3o2RR',
+    // 'S6lXfLJErXQLQUvXcmu9d8wbJ6D3': [
+    //     'cvA9UISJHkavljsyxfa_81:APA91bHhuCUPJqp24d2vIO84-K-TtI_mi0f23oxxyDj9MbNQsD8nyG1r7ices7_IpcSA-y1uwucY3eodLOP_jaSYcjwTcR7teTMq0rO3dMjoeXM_8Pcb2znjFNratoFDOqFRR5j3o2RR',
+    //     '--wrong-token--',
+    // ],
+    // fRrREMldj0MEiUhmHrerJD:APA91bGbkinE5WeDQIXPBRO-8npBTl-DDihfzrd_u0OkKQy3yLb1vaOG1-QkdGhXQBBij9EQ4SFGRjEqhrQa01ci_0zQUNJHFemkVESnXxM-s1prColC0ptnXHmBYg1W4FWwZYuTrygW   
+    'IBEJHhvXStXSh68O7QjtPluLVSu2': [
+        'eyVx20AdSPqc_TkZET6Pza:APA91bGt5iCZcB9NBtYiYQ6QZUk1IWOZbcyuLgOadOEe3TQ30_Wq5cISsk6V7dIbOSjC28Bu8N81m3UB5MDfqjW84NKhAF4PYnS7Yl_eo3EcdhCMveDcCJyn7_Di0hd_JikhZ3E-HKQU',
+    ],
+    'j76oLdb3OPgKdNydIklBDoZgIiQ2': [
+        'errQJyxrO0lgtiBpIVLHoc:APA91bHYEDPdSOk9H5oZ6ywy3kXzCioLWTuU277e41eizKfG7abhfnG61dfFj5IpH2jNhthDI8EDuuebosIz5R7k9O4F1_9ysDUlm7TMNVvXPER05XQIKOonypmxcRhw7TtKfPtp7oJR',
         '--wrong-token--',
     ],
+    // eyVx20AdSPqc_TkZET6Pza:APA91bGt5iCZcB9NBtYiYQ6QZUk1IWOZbcyuLgOadOEe3TQ30_Wq5cISsk6V7dIbOSjC28Bu8N81m3UB5MDfqjW84NKhAF4PYnS7Yl_eo3EcdhCMveDcCJyn7_Di0hd_JikhZ3E-HKQU
+
     'user-A': [
         '--wrong-token--1--',
         '--wrong-token--2--',
@@ -45,6 +55,7 @@ const extraTokens = {
 if (admin.apps.length === 0) {
     admin.initializeApp({
         databaseURL: 'http://127.0.0.1:9000/?ns=withcenter-test-4-default-rtdb',
+        projectId: 'withcenter-test-4',
     });
 }
 

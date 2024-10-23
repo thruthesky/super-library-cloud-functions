@@ -126,6 +126,7 @@ const getChatRoomUsers = async (roomId) => {
 }
 
 
+
 /**
  * Returns the message batches.
  * 
@@ -184,7 +185,22 @@ const sendChatMessages = async (roomId, messageId, data) => {
     console.log('sendChatMessages:: ', roomId, messageId, data);
 
     const uids = await getChatRoomUsers(roomId);
-    const tokens = await getUserTokens(uids);
+
+    // In chat messages, the user must be subscribed.
+    // When `fcm-subscription/{room-id}/{myUid}` is null, it means
+    // that the user is subscribed, otherwise, the user should not
+    // receive the notificaiton
+
+    // TODO: get unsubscribeds
+    const unsubscribedUids = await getUnsubscribedUids(roomId);
+    if (debugLog) console.log('unsubscribeds: ', unsubscribedUids);
+
+    const subscribedUids = uids.filter(item => !unsubscribedUids.includes(item));
+
+
+    // removed unsubscribed users
+
+    const tokens = await getUserTokens(subscribedUids);
 
     if (debugLog) console.log('tokens: ', tokens);
 
@@ -212,11 +228,27 @@ const sendChatMessages = async (roomId, messageId, data) => {
 
 
     const messageBatches = getPayloads(tokens, title, body, imageUrl, sound, parameterData, initialPageName);
-
-
     await sendPushNotifications(messageBatches, '/chat/rooms/' + roomId + '/messages/' + messageId);
-
 }
+
+
+/**
+ * Gets the unsubscribed users from the room id
+ * 
+ * @param roomId 
+ * @returns 
+ */
+const getUnsubscribedUids = async (roomId) => {
+    const snapshot = await admin.database().ref("fcm-subscription").child(roomId).get();
+    const unsubscribed = snapshot.val();
+    if (unsubscribed) {
+        const uids = Object.keys(unsubscribed);
+        return uids;
+    }
+    return [];
+}
+
+
 
 /**
  * Send push notifications to the users.
@@ -263,6 +295,7 @@ exports.getChatRoomUsers = getChatRoomUsers;
 exports.getUserTokens = getUserTokens;
 exports.sendChatMessages = sendChatMessages;
 exports.getPayloads = getPayloads;
+exports.getUnsubscribedUids = getUnsubscribedUids;
 exports.sendPushNotifications = sendPushNotifications;
 
 
