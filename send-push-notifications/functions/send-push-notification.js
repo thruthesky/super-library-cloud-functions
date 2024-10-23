@@ -1,8 +1,12 @@
 
 const admin = require("firebase-admin");
 const { getPayloads, sendPushNotifications } = require(".");
+
+
 admin.initializeApp({
     databaseURL: 'https://withcenter-test-4-default-rtdb.firebaseio.com',
+    projectId: 'withcenter-test-4',
+
 });
 
 // console.log(admin.apps);
