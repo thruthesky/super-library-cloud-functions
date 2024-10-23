@@ -10,14 +10,16 @@
 const { onValueCreated } = require("firebase-functions/v2/database");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
+const { after } = require("node:test");
 
 const region = "asia-southeast1"
 
 
 const batchCount = 3;
+const debugLog = true;
 
 
-exports.listenToChatMessage = onValueCreated(
+exports.pushNotificationOnChatMessage = onValueCreated(
     {
         ref: "/chat/messages/{roomId}/{messageId}",
         /**
@@ -57,16 +59,38 @@ exports.listenToChatMessage = onValueCreated(
         /** Whether failed executions should be delivered again. */
         // retry ?: boolean | Expression < boolean > | ResetValue;
     },
-    (event) => {
+    async (event) => {
         // Grab the current value of what was written to the Realtime Database.
         const data = event.data.val();
         const roomId = event.params.roomId;
         const messageId = event.params.messageId;
         console.log("roomId: ", roomId, ", messageId: ", messageId, ", data: ", data);
 
-        return sendChatMessages(roomId, messageId, data);
+        await sendChatMessages(roomId, messageId, data);
     },
 );
+
+exports.pushNotificationOnData = onValueCreated({
+    ref: "data/{dataId}",
+}, async (event) => {
+    console.log('pushNotificationOnData() begins;', event);
+});
+
+
+exports.pushNotificationOnComment = onValueCreated({
+    ref: "comment/{commentId}",
+}, async (event) => {
+    console.log('pushNotificationOnComment() begins;', event);
+});
+
+exports.pushNotificationOnLike = onValueCreated({
+    ref: "like/{likeId}",
+}, async (event) => {
+    console.log('pushNotificationOnLike() begins;', event);
+});
+
+
+
 
 /**
  * Returns the FCM tokens of the users.
@@ -162,7 +186,7 @@ const sendChatMessages = async (roomId, messageId, data) => {
     const uids = await getChatRoomUsers(roomId);
     const tokens = await getUserTokens(uids);
 
-    console.log('tokens: ', tokens);
+    if (debugLog) console.log('tokens: ', tokens);
 
     const isSingleChat = roomId.indexOf('---') >= 0;
     const groupChat = !isSingleChat;
@@ -192,7 +216,6 @@ const sendChatMessages = async (roomId, messageId, data) => {
 
     await sendPushNotifications(messageBatches, '/chat/rooms/' + roomId + '/messages/' + messageId);
 
-
 }
 
 /**
@@ -205,27 +228,34 @@ const sendPushNotifications = async (messageBatches, id) => {
     var numFailed = 0;
 
     const ref = admin.database().ref('fcm-results').push();
-    await ref.set({
+    const beforeLogData = {
         id,
         status: "started",
         startedAt: new Date().toISOString(),
-    });
+    };
+    if (debugLog) console.log(beforeLogData);
+    await ref.set(beforeLogData);
 
     await Promise.all(
         messageBatches.map(async (messages) => {
-            console.log(messages.tokens.length, "messages to send");
+            if (debugLog) {
+                console.log('sendPushNotifications():', messages.tokens.length, "messages to send");
+                console.log(messages);
+            }
             const response = await admin.messaging().sendEachForMulticast(messages);
             numSent += response.successCount;
             numFailed += response.failureCount;
         })
     );
 
-    await ref.update({
-        status: "succeeded",
+    const afterLogData = {
+        status: "finished",
         num_sent: numSent,
         num_failed: numFailed,
         finishedAt: new Date().toISOString(),
-    });
+    };
+    if (debugLog) console.log(afterLogData);
+    await ref.update(afterLogData);
 }
 
 
