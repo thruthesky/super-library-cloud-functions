@@ -35,8 +35,6 @@ exports.createEmailPasswordAccount = onCall(async (request) => {
 exports.createUser = async (data) => {
 
 
-
-
     // Data from client call.
     const email = data.email || "";
     const password = data.password || "";
