@@ -164,7 +164,7 @@ const notifyDataCategorySubscribers = async (dataKey, data) => {
   }
   const sound = data.notification_sound || "";
 
-  const parameterData = { category, dataKey };
+  const parameterData = JSON.stringify({ category, dataKey });
   const initialPageName = "DataDetailScreen";
 
   // Batch them
