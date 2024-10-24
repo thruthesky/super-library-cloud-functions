@@ -14,6 +14,7 @@ const admin = require("firebase-admin");
 // const region = "asia-southeast1";
 
 
+/// 500 is good for the production.
 const batchCount = 3;
 const debugLog = true;
 
@@ -81,14 +82,14 @@ exports.pushNotificationOnChatMessage = onValueCreated(
 );
 
 exports.pushNotificationOnData = onValueCreated({
-  ref: "data/{dataId}",
+  ref: "data/{dataKey}",
 }, async (event) => {
   console.log("pushNotificationOnData() begins;", event);
 
   const data = event.data.val();
-  const dataId = event.params.dataId;
-  console.log("dataId: ", dataId, ", data: ", data);
-  await notifyCategorySubscribers(data.category, dataId, data);
+  const dataKey = event.params.dataKey;
+  console.log("dataKey: ", dataKey, ", data: ", data);
+  await notifyDataCategorySubscribers(dataKey, data);
 });
 
 
@@ -135,13 +136,15 @@ const getUserTokens = async (uids) => {
 const getChatRoomUsers = async (roomId) => {
   const snapshot = await admin.database().ref("chat/rooms").child(roomId).child("users").get();
   const userMap = snapshot.val();
+  // Note that if the value is false, then the user didn't accept the invitation. Do we need to consider this?
   const uids = Object.keys(userMap);
   return uids;
 };
 
 // TODO: How can we organize CHAT and DATA SUBSCRIPTION push notifications
 
-const notifyCategorySubscribers = async (category, dataId, data) => {
+const notifyDataCategorySubscribers = async (dataKey, data) => {
+  const category = data.category;
   // Get all users subscribed to the category
   const subscribedUsers = await getSubscribedUids(category);
   if (debugLog) console.log("subscribedUsers: ", subscribedUsers);
@@ -150,27 +153,25 @@ const notifyCategorySubscribers = async (category, dataId, data) => {
   const tokens = await getUserTokens(subscribedUsers);
   if (debugLog) console.log("tokens: ", tokens);
 
-  // TODO prepare payload data
-  const title = data.title || "A new notification";
-  const body = data.content || "...";
-  // TODO review the image URL
-  // TODO review if We can also put the image of the user instead.
+  //
+  const title = (data.title || "A new notification").substring(0, 100);
+  const body = (data.content || "...").substring(0, 100);
+  // TODO: Add user's profile photo url if there is no image url.
+  // TODO: what if the urls[0] is not an image?
   let imageUrl = "";
   if (data.urls && data.urls.length > 0) {
     imageUrl = data.urls[0];
   }
   const sound = data.notification_sound || "";
 
-  // TODO: support it works with FlutterFlow
-  const parameterData = data.parameter_data || "";
-  // TODO: support it works with FlutterFlow
-  const initialPageName = data.initial_page_name || "";
+  const parameterData = { category, dataKey };
+  const initialPageName = "DataDetailScreen";
 
   // Batch them
   const messageBatches = getPayloads(tokens, title, body, imageUrl, sound, parameterData, initialPageName);
 
   // Send Notification
-  await sendPushNotifications(messageBatches, "/data/" + dataId);
+  await sendPushNotifications(messageBatches, "/data/" + dataKey);
 };
 
 
@@ -266,10 +267,9 @@ const sendChatMessages = async (roomId, messageId, data) => {
   const imageUrl = data.url || data.photourl || "";
   const sound = data.notification_sound || "";
 
-  // TODO: support it works with FlutterFlow
-  const parameterData = data.parameter_data || "";
-  // TODO: support it works with FlutterFlow
-  const initialPageName = data.initial_page_name || "";
+
+  const parameterData = { roomId, messageId };
+  const initialPageName = "ChatRoomScreen";
 
   const messageBatches = getPayloads(tokens, title, body, imageUrl, sound, parameterData, initialPageName);
   await sendPushNotifications(messageBatches, "/chat/rooms/" + roomId + "/messages/" + messageId);
@@ -278,36 +278,25 @@ const sendChatMessages = async (roomId, messageId, data) => {
 /**
  * Gets the subscribed users from the subscriptionId
  * @param {string} subscriptionId of the room
- * @return {string} array of string
+ * @return {*} array of string
  */
 const getSubscribedUids = async (subscriptionId) => {
   const snapshot = await admin.database().ref("fcm-subscriptions").child(subscriptionId).get();
-  const subscribed = snapshot.val();
-  if (subscribed) {
-    const uids = Object.keys(subscribed);
-    return uids;
-  }
-  return [];
+  return snapshot.exists() ? Object.keys(snapshot.val()) : [];
 };
 
 /**
- * TODO review
+ * 
  * Gets the unsubscribed users from the room id
  * This is for reversed.
  * This is really the same with `getSubscribedUids` func.
  * NOTE that some subscription is reversed
  *
  * @param {roomId} subscriptionId of the room
- * @return {string} array of string
+ * @return {*} array of string
  */
 const getUnsubscribedUids = async (subscriptionId) => {
-  const snapshot = await admin.database().ref("fcm-subscriptions").child(subscriptionId).get();
-  const unsubscribed = snapshot.val();
-  if (unsubscribed) {
-    const uids = Object.keys(unsubscribed);
-    return uids;
-  }
-  return [];
+  return await getSubscribedUids(subscriptionId);
 };
 
 /**
