@@ -96,6 +96,7 @@ exports.pushNotificationOnComment = onValueCreated({
   ref: "comment/{commentId}",
 }, async (event) => {
   console.log("pushNotificationOnComment() begins;", event);
+  // TODO push notifications on comment
 });
 
 exports.pushNotificationOnLike = onValueCreated({
@@ -151,8 +152,9 @@ const notifyCategorySubscribers = async (category, dataId, data) => {
 
   // TODO prepare payload data
   const title = data.title || "A new notification";
-  const body = data.text || "...";
-  const imageUrl = data.url[0] || "";
+  const body = data.content || "...";
+  // TODO add image url
+  const imageUrl = "";
   const sound = data.notification_sound || "";
 
   // TODO: support it works with FlutterFlow
@@ -251,12 +253,12 @@ const sendChatMessages = async (roomId, messageId, data) => {
   let title = data.displayName || "Unknown user";
   if (groupChat) {
     // get chat room name
-    // const snapshot = await admin.database().ref("chat/rooms").child(roomId).child('name').get();
-    // TODO: get chat room name and append it to the title
-    title += " (room name)";
+    const snapshot = await admin.database().ref("chat/rooms").child(roomId).child("name").get();
+    // append chat room name to the title
+    title += " (" + (snapshot.val() || "Group Chat") + ")";
   }
   const body = data.text || "...";
-  // TODO: (1) if the url is an image, then apply it to the imageUrl. (2) if there is not url, then apply user's photoUrl.
+  // (1) if the url is an image, then apply it to the imageUrl. (2) if there is not url, then apply user's photoUrl.
   const imageUrl = data.url || data.photourl || "";
   const sound = data.notification_sound || "";
 
@@ -264,7 +266,6 @@ const sendChatMessages = async (roomId, messageId, data) => {
   const parameterData = data.parameter_data || "";
   // TODO: support it works with FlutterFlow
   const initialPageName = data.initial_page_name || "";
-
 
   const messageBatches = getPayloads(tokens, title, body, imageUrl, sound, parameterData, initialPageName);
   await sendPushNotifications(messageBatches, "/chat/rooms/" + roomId + "/messages/" + messageId);
