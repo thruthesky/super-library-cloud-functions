@@ -14,7 +14,7 @@ const admin = require("firebase-admin");
 // const region = "asia-southeast1";
 
 
-/// 500 is good for the production.
+// 500 is good for the production.
 const batchCount = 3;
 const debugLog = true;
 
@@ -267,8 +267,7 @@ const sendChatMessages = async (roomId, messageId, data) => {
   const imageUrl = data.url || data.photourl || "";
   const sound = data.notification_sound || "";
 
-
-  const parameterData = { roomId, messageId };
+  const parameterData = JSON.stringify({ roomId, messageId });
   const initialPageName = "ChatRoomScreen";
 
   const messageBatches = getPayloads(tokens, title, body, imageUrl, sound, parameterData, initialPageName);
@@ -286,7 +285,6 @@ const getSubscribedUids = async (subscriptionId) => {
 };
 
 /**
- * 
  * Gets the unsubscribed users from the room id
  * This is for reversed.
  * This is really the same with `getSubscribedUids` func.
