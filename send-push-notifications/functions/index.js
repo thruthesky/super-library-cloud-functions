@@ -153,8 +153,12 @@ const notifyCategorySubscribers = async (category, dataId, data) => {
   // TODO prepare payload data
   const title = data.title || "A new notification";
   const body = data.content || "...";
-  // TODO add image url
-  const imageUrl = "";
+  // TODO review the image URL
+  // TODO review if We can also put the image of the user instead.
+  let imageUrl = "";
+  if (data.urls && data.urls.length > 0) {
+    imageUrl = data.urls[0];
+  }
   const sound = data.notification_sound || "";
 
   // TODO: support it works with FlutterFlow
