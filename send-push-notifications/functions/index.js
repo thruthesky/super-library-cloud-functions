@@ -241,6 +241,9 @@ const sendChatMessages = async (roomId, messageId, data) => {
 
   const uids = await getChatRoomUsers(roomId);
 
+  const senderUid = data.uid;
+  if (debugLog) console.log("senderUid: ", senderUid);
+
   // In chat messages, the user must be subscribed.
   // When `fcm-subscriptions/{room-id}/{myUid}` is null, it means
   // that the user is subscribed, otherwise, the user should not
@@ -253,6 +256,13 @@ const sendChatMessages = async (roomId, messageId, data) => {
 
   // remove unsubscribed users
   const subscribedUids = uids.filter((item) => !unsubscribedUids.includes(item));
+
+  // get index of senderUid to remove the sender UId
+  const senderUidIndex = subscribedUids.indexOf(senderUid);
+
+  // only splice array when item is found
+  // 2nd parameter means remove one item only
+  if (senderUidIndex > -1) subscribedUids.splice(senderUidIndex, 1);
 
   const tokens = await getUserTokens(subscribedUids);
 
