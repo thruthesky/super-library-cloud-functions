@@ -96,7 +96,15 @@ exports.pushNotificationOnComment = onValueCreated({
   ref: "comment/{commentId}",
 }, async (event) => {
   console.log("pushNotificationOnComment() begins;", event);
-  // TODO push notifications on comment
+
+
+
+  const data = event.data.val();
+  const dataKey = event.params.dataKey;
+  console.log("dataKey: ", dataKey, ", data: ", data);
+
+  // TODO Continue from here when comment data structure is ready
+  // await notifyOwnerOfCommentedData(dataKey, data);
 });
 
 exports.pushNotificationOnLike = onValueCreated({
