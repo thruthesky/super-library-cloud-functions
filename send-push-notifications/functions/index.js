@@ -97,8 +97,6 @@ exports.pushNotificationOnComment = onValueCreated({
 }, async (event) => {
   console.log("pushNotificationOnComment() begins;", event);
 
-
-
   const data = event.data.val();
   const dataKey = event.params.dataKey;
   console.log("dataKey: ", dataKey, ", data: ", data);
