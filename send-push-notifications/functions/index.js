@@ -92,7 +92,6 @@ exports.pushNotificationOnData = onValueCreated({
   await notifyDataCategorySubscribers(dataKey, data);
 });
 
-
 exports.pushNotificationOnComment = onValueCreated({
   ref: "comment/{commentId}",
 }, async (event) => {
@@ -166,6 +165,7 @@ const notifyDataCategorySubscribers = async (dataKey, data) => {
 
   const parameterData = JSON.stringify({ category, dataKey });
   const initialPageName = "DataDetailScreen";
+
 
   // Batch them
   const messageBatches = getPayloads(tokens, title, body, imageUrl, sound, parameterData, initialPageName);
@@ -252,7 +252,6 @@ const sendChatMessages = async (roomId, messageId, data) => {
 
   const isSingleChat = roomId.indexOf("---") >= 0;
   const groupChat = !isSingleChat;
-
 
   // const notificationData = data;
   let title = data.displayName || "Unknown user";
