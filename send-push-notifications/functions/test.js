@@ -7,6 +7,8 @@ const {
   getPayloads,
   getUnsubscribedUids,
   sendPushNotifications,
+  getAncestorKeys,
+  getUidsOfCommentKeys,
 } = require(".");
 const { describe, test, it } = require("node:test");
 const assert = require("assert");
@@ -111,6 +113,108 @@ describe("sendChatMessages", () => {
     assert.deepStrictEqual(subscribedUids.sort(), [uid1, uid2].sort());
   });
 
+  test("getting ancestorKeys 1", async () => {
+    const ancestorKeys = await getAncestorKeys("comment-1");
+    assert.deepStrictEqual(ancestorKeys, ["comment-1"]);
+  });
+
+  test("getting ancestorKeys 1", async () => {
+    // Prepare
+
+
+    const rootKey = "root-key";
+    const comment1Key = "comment-1";
+    const comment1_1Key = "comment-1-1";
+    const comment1_1_1Key = "comment-1-1-1";
+    const comment1_1_2Key = "comment-1-1-2";
+    const comment1_1_3Key = "comment-1-1-3";
+    const comment1_1_4Key = "comment-1-1-4";
+    const comment1_1_4_1Key = "comment-1-1-4-1";
+    const comment1_1_4_2Key = "comment-1-1-4-2";
+    const comment1_1_5Key = "comment-1-1-5";
+    const comment1_2Key = "comment-1-2";
+    const comment2Key = "comment-2";
+    const comment3Key = "comment-3";
+    const comment4Key = "comment-4";
+    const comment5Key = "comment-5";
+
+    await admin.database().ref("comments").child(comment1Key).set({ rootKey });
+    await admin.database().ref("comments").child(comment1_1Key).set({ parentKey: comment1Key, rootKey });
+    await admin.database().ref("comments").child(comment1_1_1Key).set({ parentKey: comment1_1Key, rootKey });
+    await admin.database().ref("comments").child(comment1_1_2Key).set({ parentKey: comment1_1Key, rootKey });
+    await admin.database().ref("comments").child(comment1_1_3Key).set({ parentKey: comment1_1Key, rootKey });
+    await admin.database().ref("comments").child(comment1_1_4Key).set({ parentKey: comment1_1Key, rootKey });
+    await admin.database().ref("comments").child(comment1_1_4_1Key).set({ parentKey: comment1_1_4Key, rootKey });
+    await admin.database().ref("comments").child(comment1_1_4_2Key).set({ parentKey: comment1_1_4Key, rootKey });
+    await admin.database().ref("comments").child(comment1_1_5Key).set({ parentKey: comment1_1Key, rootKey });
+    await admin.database().ref("comments").child(comment1_2Key).set({ parentKey: comment1Key, rootKey });
+    await admin.database().ref("comments").child(comment2Key).set({ rootKey });
+    await admin.database().ref("comments").child(comment3Key).set({ rootKey });
+    await admin.database().ref("comments").child(comment4Key).set({ rootKey });
+    await admin.database().ref("comments").child(comment5Key).set({ rootKey });
+
+
+    const ancestorKeys = await getAncestorKeys(comment1_1Key);
+    assert.deepStrictEqual(ancestorKeys.sort(), [comment1_1Key, comment1Key].sort());
+
+    const ancestorKeys2 = await getAncestorKeys(comment1_1_4Key);
+    assert.deepStrictEqual(ancestorKeys2.sort(), [comment1_1_4Key, comment1_1Key, comment1Key].sort());
+
+    // means no parent
+    const ancestorKeys3 = await getAncestorKeys(null);
+    assert.deepStrictEqual(ancestorKeys3, []);
+  });
+
+  it("getUidsOfCommentKeys", async () => {
+
+    const uid1 = "user-A";
+    const uid2 = "user-B";
+    const uid3 = "user-C";
+    const uid4 = "user-D";
+
+
+
+    // Prepare
+    const rootKey = "root-key";
+    const comment1Key = "comment-1";
+    const comment1_1Key = "comment-1-1";
+    const comment1_1_1Key = "comment-1-1-1";
+    const comment1_1_2Key = "comment-1-1-2";
+    const comment1_1_3Key = "comment-1-1-3";
+    const comment1_1_4Key = "comment-1-1-4";
+    const comment1_1_4_1Key = "comment-1-1-4-1";
+    const comment1_1_4_2Key = "comment-1-1-4-2";
+    const comment1_1_5Key = "comment-1-1-5";
+    const comment1_2Key = "comment-1-2";
+    const comment2Key = "comment-2";
+    const comment3Key = "comment-3";
+    const comment4Key = "comment-4";
+    const comment5Key = "comment-5";
+
+    await admin.database().ref("comments").child(comment1Key).set({ rootKey, uid: uid1 });
+    await admin.database().ref("comments").child(comment1_1Key).set({ parentKey: comment1Key, rootKey, uid: uid2 });
+    await admin.database().ref("comments").child(comment1_1_1Key).set({ parentKey: comment1_1Key, rootKey, uid: uid3 });
+    await admin.database().ref("comments").child(comment1_1_2Key).set({ parentKey: comment1_1Key, rootKey, uid: uid4 });
+    await admin.database().ref("comments").child(comment1_1_3Key).set({ parentKey: comment1_1Key, rootKey, uid: uid1 });
+    await admin.database().ref("comments").child(comment1_1_4Key).set({ parentKey: comment1_1Key, rootKey, uid: uid2 });
+    await admin.database().ref("comments").child(comment1_1_4_1Key).set({ parentKey: comment1_1_4Key, rootKey, uid: uid3 });
+    await admin.database().ref("comments").child(comment1_1_4_2Key).set({ parentKey: comment1_1_4Key, rootKey, uid: uid4 });
+    await admin.database().ref("comments").child(comment1_1_5Key).set({ parentKey: comment1_1Key, rootKey, uid: uid1 });
+    await admin.database().ref("comments").child(comment1_2Key).set({ parentKey: comment1Key, rootKey, uid: uid2 });
+    await admin.database().ref("comments").child(comment2Key).set({ rootKey, uid: uid3 });
+    await admin.database().ref("comments").child(comment3Key).set({ rootKey, uid: uid4 });
+    await admin.database().ref("comments").child(comment4Key).set({ rootKey, uid: uid1 });
+    await admin.database().ref("comments").child(comment5Key).set({ rootKey, uid: uid2 });
+
+
+    const uids = await getUidsOfCommentKeys([comment1Key, comment1_1Key, comment1_1_1Key]);
+    assert.deepStrictEqual(uids.sort(), [uid1, uid2, uid3].sort());
+
+
+    const uids2 = await getUidsOfCommentKeys([comment1Key, comment1_1_3Key, comment1_1_5Key]);
+    assert.deepStrictEqual(uids2.sort(), [uid1].sort());
+  })
+
   test("should send messages", async () => {
     // Prepare: Add users into the chat room.
     const roomId = "group-chat" + (new Date).getTime();
@@ -121,7 +225,6 @@ describe("sendChatMessages", () => {
     Object.keys(extraTokens).forEach(async (uid) => {
       await admin.database().ref("chat/rooms").child("room-Extra").child("users").child(uid).set(true);
     });
-
 
     // Prepare: Add FCM tokens for the users in [tokens, extraTokens]
     Object.keys(tokens).forEach(async (uid) => {

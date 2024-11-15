@@ -20,7 +20,7 @@ const debugLog = true;
 
 
 // Initialize Firebase app
-admin.initializeApp();
+// admin.initializeApp();
 
 exports.pushNotificationOnChatMessage = onValueCreated(
   {
@@ -92,12 +92,17 @@ exports.pushNotificationOnData = onValueCreated({
   await notifyDataCategorySubscribers(dataKey, data);
 });
 
-
 exports.pushNotificationOnComment = onValueCreated({
   ref: "comment/{commentId}",
 }, async (event) => {
   console.log("pushNotificationOnComment() begins;", event);
-  // TODO push notifications on comment
+
+  const data = event.data.val();
+  const dataKey = event.params.dataKey;
+  console.log("dataKey: ", dataKey, ", data: ", data);
+
+  // TODO Continue from here when comment data structure is ready
+  await notifyParentCommentersAndOwnerOfData(dataKey, data);
 });
 
 exports.pushNotificationOnLike = onValueCreated({
@@ -126,6 +131,95 @@ const getUserTokens = async (uids) => {
   }
   return tokens;
 };
+
+// TODO ONGOING
+
+const notifyParentCommentersAndOwnerOfData = async (dataKey, data) => {
+  const parentKey = data.parentKey;
+  const rootKey = data.rootKey;
+
+  // Get the parent's parent's parent's... keys, a.k.a. ancestorKeys.
+  const ancestorKeys = getAncestorKeys(parentKey);
+
+  // Get the uids of the ancestor keys
+  const uidsToNotify = getUidsOfCommentKeys([...ancestorKeys, rootKey]);
+
+  const [dataOwnerTokens, parentCommenterTokens] = await Promise.all([
+    getUserTokens(dataOwnerUid),
+    getUserTokens(parentCommenterUid)
+  ]);
+  const tokens = [...dataOwnerTokens, ...parentCommenterTokens];
+
+  if (tokens.length === 0) {
+    if (debugLog) console.log("No tokens found for data owner or parent commenter:", dataOwnerTokens, parentCommenterTokens);
+    return;
+  }
+
+  const commenterDisplayNameSnapshot = await admin.database().ref("users").child(data.uid).child("displayName").get();
+
+  const title = (((commenterDisplayNameSnapshot.val() ?? "").trim() || "Someone") + " commented on your post").substring(0, 100);
+  const body = (data.content || "...").substring(0, 100);
+  // TODO: Add user's profile photo url if there is no image url.
+  // TODO: what if the urls[0] is not an image?
+  let imageUrl = "";
+  if (data.urls && data.urls.length > 0) {
+    imageUrl = data.urls[0];
+  }
+  const sound = data.notification_sound || "";
+
+
+  // TODO tests
+  const categorySnapshot = await admin.database().ref("data").child(data.rootKey).child("category").get();
+  const category = categorySnapshot.val();
+
+
+  const parameterData = JSON.stringify({ category, rootKey });
+  const initialPageName = "DataDetailScreen";
+
+
+  // Batch them
+  const messageBatches = getPayloads(tokens, title, body, imageUrl, sound, parameterData, initialPageName);
+
+  // Send Notification
+  await sendPushNotifications(messageBatches, "/data/" + dataKey);
+
+}
+
+// TODO review
+/**
+ * Gets the parent's parent's parent's... key, a.k.a. ancestor keys
+ * @param {*} parentKey 
+ * @returns array of string
+ */
+const getAncestorKeys = async (parentKey) => {
+  const ancestorKeys = [];
+  let _parentKey = parentKey;
+  while (_parentKey != null) {
+    ancestorKeys.push(_parentKey);
+    // TODO, Is this the right way, get them one by one?
+    // TODO look for better way
+    // get parent key one by one
+    const parentKeySnapshot = await admin.database().ref("comments").child(_parentKey).child("parentKey").get();
+    _parentKey = parentKeySnapshot.val();
+  }
+  return ancestorKeys;
+}
+
+// TODO test
+const getUidsOfCommentKeys = async (commentKeys) => {
+  const uidPromises = commentKeys.map(async (commentKey) => {
+    const uidSnapshot = await admin.database().ref("comments").child(commentKey).child("uid").get();
+    return uidSnapshot.val();
+  });
+
+  // Wait for all promises to resolve and gather the results
+  return Array.from(new Set(await Promise.all(uidPromises)));
+
+};
+
+
+
+
 
 /**
  * Returns the user ids of the chat room users.
@@ -166,6 +260,7 @@ const notifyDataCategorySubscribers = async (dataKey, data) => {
 
   const parameterData = JSON.stringify({ category, dataKey });
   const initialPageName = "DataDetailScreen";
+
 
   // Batch them
   const messageBatches = getPayloads(tokens, title, body, imageUrl, sound, parameterData, initialPageName);
@@ -233,6 +328,9 @@ const sendChatMessages = async (roomId, messageId, data) => {
 
   const uids = await getChatRoomUsers(roomId);
 
+  const senderUid = data.uid;
+  if (debugLog) console.log("senderUid: ", senderUid);
+
   // In chat messages, the user must be subscribed.
   // When `fcm-subscriptions/{room-id}/{myUid}` is null, it means
   // that the user is subscribed, otherwise, the user should not
@@ -246,13 +344,19 @@ const sendChatMessages = async (roomId, messageId, data) => {
   // remove unsubscribed users
   const subscribedUids = uids.filter((item) => !unsubscribedUids.includes(item));
 
+  // get index of senderUid to remove the sender UId
+  const senderUidIndex = subscribedUids.indexOf(senderUid);
+
+  // only splice array when item is found
+  // 2nd parameter means remove one item only
+  if (senderUidIndex > -1) subscribedUids.splice(senderUidIndex, 1);
+
   const tokens = await getUserTokens(subscribedUids);
 
   if (debugLog) console.log("tokens: ", tokens);
 
   const isSingleChat = roomId.indexOf("---") >= 0;
   const groupChat = !isSingleChat;
-
 
   // const notificationData = data;
   let title = data.displayName || "Unknown user";
@@ -340,6 +444,10 @@ const sendPushNotifications = async (messageBatches, id) => {
 
 
 exports.getChatRoomUsers = getChatRoomUsers;
+exports.notifyDataCategorySubscribers = notifyDataCategorySubscribers;
+exports.notifyParentCommentersAndOwnerOfData = notifyParentCommentersAndOwnerOfData;
+exports.getAncestorKeys = getAncestorKeys;
+exports.getUidsOfCommentKeys = getUidsOfCommentKeys;
 exports.getUserTokens = getUserTokens;
 exports.sendChatMessages = sendChatMessages;
 exports.getPayloads = getPayloads;
