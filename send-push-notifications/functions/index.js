@@ -102,7 +102,7 @@ exports.pushNotificationOnComment = onValueCreated({
   console.log("dataKey: ", dataKey, ", data: ", data);
 
   // TODO Continue from here when comment data structure is ready
-  await notifyParentCommentersAndOwnerOfData(dataKey, data);
+  // await notifyParentCommentersAndOwnerOfData(dataKey, data);
 });
 
 exports.pushNotificationOnLike = onValueCreated({
@@ -131,18 +131,17 @@ const getUserTokens = async (uids) => {
   }
   return tokens;
 };
-
+/*
 // TODO ONGOING
-
 const notifyParentCommentersAndOwnerOfData = async (dataKey, data) => {
-  const parentKey = data.parentKey;
+  // const parentKey = data.parentKey;
   const rootKey = data.rootKey;
 
   // Get the parent's parent's parent's... keys, a.k.a. ancestorKeys.
-  const ancestorKeys = getAncestorKeys(parentKey);
+  // const ancestorKeys = getAncestorKeys(parentKey);
 
   // Get the uids of the ancestor keys
-  const uidsToNotify = getUidsOfCommentKeys([...ancestorKeys, rootKey]);
+  // const uidsToNotify = getUidsOfCommentKeys([...ancestorKeys, rootKey]);
 
   const [dataOwnerTokens, parentCommenterTokens] = await Promise.all([
     getUserTokens(dataOwnerUid),
@@ -157,7 +156,8 @@ const notifyParentCommentersAndOwnerOfData = async (dataKey, data) => {
 
   const commenterDisplayNameSnapshot = await admin.database().ref("users").child(data.uid).child("displayName").get();
 
-  const title = (((commenterDisplayNameSnapshot.val() ?? "").trim() || "Someone") + " commented on your post").substring(0, 100);
+  const name = commenterDisplayNameSnapshot.val() ? commenterDisplayNameSnapshot.val() : "";
+  const title = (( name || "Someone") + " commented on your post").substring(0, 100);
   const body = (data.content || "...").substring(0, 100);
   // TODO: Add user's profile photo url if there is no image url.
   // TODO: what if the urls[0] is not an image?
@@ -184,12 +184,13 @@ const notifyParentCommentersAndOwnerOfData = async (dataKey, data) => {
   await sendPushNotifications(messageBatches, "/data/" + dataKey);
 
 }
+*/
 
-// TODO review
+
 /**
  * Gets the parent's parent's parent's... key, a.k.a. ancestor keys
- * @param {*} parentKey 
- * @returns array of string
+ * @param {*} parentKey the parent key
+ * @return {Promise<string[]>} array of string
  */
 const getAncestorKeys = async (parentKey) => {
   const ancestorKeys = [];
@@ -203,7 +204,7 @@ const getAncestorKeys = async (parentKey) => {
     _parentKey = parentKeySnapshot.val();
   }
   return ancestorKeys;
-}
+};
 
 // TODO test
 const getUidsOfCommentKeys = async (commentKeys) => {
@@ -214,11 +215,7 @@ const getUidsOfCommentKeys = async (commentKeys) => {
 
   // Wait for all promises to resolve and gather the results
   return Array.from(new Set(await Promise.all(uidPromises)));
-
 };
-
-
-
 
 
 /**
@@ -445,7 +442,7 @@ const sendPushNotifications = async (messageBatches, id) => {
 
 exports.getChatRoomUsers = getChatRoomUsers;
 exports.notifyDataCategorySubscribers = notifyDataCategorySubscribers;
-exports.notifyParentCommentersAndOwnerOfData = notifyParentCommentersAndOwnerOfData;
+// exports.notifyParentCommentersAndOwnerOfData = notifyParentCommentersAndOwnerOfData;
 exports.getAncestorKeys = getAncestorKeys;
 exports.getUidsOfCommentKeys = getUidsOfCommentKeys;
 exports.getUserTokens = getUserTokens;
