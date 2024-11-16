@@ -151,7 +151,7 @@ const getUserTokens = async (uids) => {
   }
   return tokens;
 };
-/*
+
 // TODO ONGOING
 const notifyParentCommentersAndOwnerOfData = async (dataKey, data) => {
   // const parentKey = data.parentKey;
@@ -177,7 +177,7 @@ const notifyParentCommentersAndOwnerOfData = async (dataKey, data) => {
   const commenterDisplayNameSnapshot = await admin.database().ref("users").child(data.uid).child("displayName").get();
 
   const name = commenterDisplayNameSnapshot.val() ? commenterDisplayNameSnapshot.val() : "";
-  const title = (( name || "Someone") + " commented on your post").substring(0, 100);
+  const title = ((name || "Someone") + " commented on your post").substring(0, 100);
   const body = (data.content || "...").substring(0, 100);
   // TODO: Add user's profile photo url if there is no image url.
   // TODO: what if the urls[0] is not an image?
@@ -187,15 +187,12 @@ const notifyParentCommentersAndOwnerOfData = async (dataKey, data) => {
   }
   const sound = data.notification_sound || "";
 
-
   // TODO tests
   const categorySnapshot = await admin.database().ref("data").child(data.rootKey).child("category").get();
   const category = categorySnapshot.val();
 
-
   const parameterData = JSON.stringify({ category, rootKey });
   const initialPageName = "DataDetailScreen";
-
 
   // Batch them
   const messageBatches = getPayloads(tokens, title, body, imageUrl, sound, parameterData, initialPageName);
@@ -204,7 +201,7 @@ const notifyParentCommentersAndOwnerOfData = async (dataKey, data) => {
   await sendPushNotifications(messageBatches, "/data/" + dataKey);
 
 }
-*/
+
 
 
 /**
