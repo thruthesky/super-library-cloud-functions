@@ -22,14 +22,21 @@ const admin = require("firebase-admin");
 
 
 // Get the region from the user and set it as a global option
-setGlobalOptions({
-  region: defineString("REGION"),
-});
+// setGlobalOptions({
+//   region: defineString("REGION"),
+// });
 
-if (admin.apps.length === 0) {
-  admin.initializeApp();
-}
+// if (admin.apps.length === 0) {
+//   admin.initializeApp();
+// }
 
+
+// if (admin.apps.length === 0) {
+//   admin.initializeApp({
+//     databaseURL: "http://127.0.0.1:9000/?ns=withcenter-test-4-default-rtdb",
+//     projectId: "withcenter-test-4",
+//   });
+// }
 
 // 500 is good for the production. 3 is good for the testing.
 const batchCount = 500;
@@ -110,18 +117,32 @@ exports.pushNotificationOnData = onValueCreated({
   await notifyDataCategorySubscribers(dataKey, data);
 });
 
+// TODO cleanup
+// exports.pushNotificationOnComment = onValueCreated({
+//   ref: "comment/{commentId}",
+//   // region: region,
+// }, async (event) => {
+//   console.log("pushNotificationOnComment() begins;", event);
+
+//   const data = event.data.val();
+//   const dataKey = event.params.dataKey;
+//   console.log("dataKey: ", dataKey, ", data: ", data);
+
+//   // TODO Continue from here when comment data structure is ready
+//   // await notifyParentCommentersAndOwnerOfData(dataKey, data);
+// });
+
 exports.pushNotificationOnComment = onValueCreated({
-  ref: "comment/{commentId}",
+  ref: "comments/{commentId}",
   // region: region,
 }, async (event) => {
   console.log("pushNotificationOnComment() begins;", event);
 
   const data = event.data.val();
-  const dataKey = event.params.dataKey;
-  console.log("dataKey: ", dataKey, ", data: ", data);
+  const commentId = event.params.commentId;
+  console.log("commentId: ", commentId, ", data: ", data);
 
-  // TODO Continue from here when comment data structure is ready
-  // await notifyParentCommentersAndOwnerOfData(dataKey, data);
+  await notifyParentCommentersAndOwnerOfData(commentId, data);
 });
 
 exports.pushNotificationOnLike = onValueCreated({
@@ -152,31 +173,45 @@ const getUserTokens = async (uids) => {
   return tokens;
 };
 
-// TODO ONGOING
-const notifyParentCommentersAndOwnerOfData = async (dataKey, data) => {
+const notifyParentCommentersAndOwnerOfData = async (commentId, data) => {
   // const parentKey = data.parentKey;
   const rootKey = data.rootKey;
+  const parentKey = data.parentKey;
 
   // Get the parent's parent's parent's... keys, a.k.a. ancestorKeys.
-  // const ancestorKeys = getAncestorKeys(parentKey);
+  const ancestorKeys = await getAncestorKeys(parentKey);
+
+  let dataOwnerUid = "";
+  if (rootKey) {
+    const dataOwnerUidSnapshot = await admin.database().ref("data").child(rootKey).child("uid").get();
+    dataOwnerUid = dataOwnerUidSnapshot.val();
+  }
 
   // Get the uids of the ancestor keys
-  // const uidsToNotify = getUidsOfCommentKeys([...ancestorKeys, rootKey]);
+  const uidsToNotify = await getUidsOfCommentKeys(ancestorKeys);
 
-  const [dataOwnerTokens, parentCommenterTokens] = await Promise.all([
+  const userTokensPromises = uidsToNotify.map(userUid => getUserTokens(userUid));
+
+  const allCommenterTokens = await Promise.all([
     getUserTokens(dataOwnerUid),
-    getUserTokens(parentCommenterUid)
+    ...userTokensPromises,
   ]);
-  const tokens = [...dataOwnerTokens, ...parentCommenterTokens];
+
+  const tokens = allCommenterTokens.flat();
 
   if (tokens.length === 0) {
-    if (debugLog) console.log("No tokens found for data owner or parent commenter:", dataOwnerTokens, parentCommenterTokens);
+    if (debugLog) console.log("No tokens found for  commenter:", tokens);
     return;
   }
 
-  const commenterDisplayNameSnapshot = await admin.database().ref("users").child(data.uid).child("displayName").get();
+  if (debugLog) console.log("TOKENS! commenter:", tokens);
 
-  const name = commenterDisplayNameSnapshot.val() ? commenterDisplayNameSnapshot.val() : "";
+  let name = "";
+  if (data.uid) {
+    const commenterDisplayNameSnapshot = await admin.database().ref("users").child(data.uid).child("displayName").get();
+    name = commenterDisplayNameSnapshot.val() ? commenterDisplayNameSnapshot.val() : "";
+  }
+
   const title = ((name || "Someone") + " commented on your post").substring(0, 100);
   const body = (data.content || "...").substring(0, 100);
   // TODO: Add user's profile photo url if there is no image url.
@@ -187,9 +222,11 @@ const notifyParentCommentersAndOwnerOfData = async (dataKey, data) => {
   }
   const sound = data.notification_sound || "";
 
-  // TODO tests
-  const categorySnapshot = await admin.database().ref("data").child(data.rootKey).child("category").get();
-  const category = categorySnapshot.val();
+  let category;
+  if (rootKey) {
+    const categorySnapshot = await admin.database().ref("data").child(rootKey).child("category").get();
+    category = categorySnapshot.val();
+  }
 
   const parameterData = JSON.stringify({ category, rootKey });
   const initialPageName = "DataDetailScreen";
@@ -198,7 +235,7 @@ const notifyParentCommentersAndOwnerOfData = async (dataKey, data) => {
   const messageBatches = getPayloads(tokens, title, body, imageUrl, sound, parameterData, initialPageName);
 
   // Send Notification
-  await sendPushNotifications(messageBatches, "/data/" + dataKey);
+  await sendPushNotifications(messageBatches, "/comments/" + commentId);
 
 }
 
@@ -213,7 +250,10 @@ const getAncestorKeys = async (parentKey) => {
   const ancestorKeys = [];
   let _parentKey = parentKey;
   while (_parentKey != null) {
+    // TODO optimization
     ancestorKeys.push(_parentKey);
+    console.log("parentKey: ", _parentKey);
+
     // TODO, Is this the right way, get them one by one?
     // TODO look for better way
     // get parent key one by one

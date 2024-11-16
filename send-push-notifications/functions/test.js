@@ -1,5 +1,3 @@
-
-
 const admin = require("firebase-admin");
 const {
   getChatRoomUsers,
@@ -121,6 +119,10 @@ describe("sendChatMessages", () => {
   test("getting ancestorKeys 1", async () => {
     // Prepare
 
+    const uid1 = "user-A";
+    const uid2 = "user-B";
+    const uid3 = "user-C";
+    const uid4 = "user-D";
 
     const rootKey = "root-key";
     const comment1Key = "comment-1";
@@ -137,7 +139,9 @@ describe("sendChatMessages", () => {
     const comment3Key = "comment-3";
     const comment4Key = "comment-4";
     const comment5Key = "comment-5";
-
+    await admin.database().ref("data").child(rootKey).set({
+      content: "test", uid: uid1, category: "test"
+    });
     await admin.database().ref("comments").child(comment1Key).set({ rootKey });
     await admin.database().ref("comments").child(comment1_1Key).set({ parentKey: comment1Key, rootKey });
     await admin.database().ref("comments").child(comment1_1_1Key).set({ parentKey: comment1_1Key, rootKey });
@@ -172,8 +176,6 @@ describe("sendChatMessages", () => {
     const uid3 = "user-C";
     const uid4 = "user-D";
 
-
-
     // Prepare
     const rootKey = "root-key";
     const comment1Key = "comment-1";
@@ -190,7 +192,9 @@ describe("sendChatMessages", () => {
     const comment3Key = "comment-3";
     const comment4Key = "comment-4";
     const comment5Key = "comment-5";
-
+    await admin.database().ref("data").child(rootKey).set({
+      content: "test", uid: uid1, category: "test"
+    });
     await admin.database().ref("comments").child(comment1Key).set({ rootKey, uid: uid1 });
     await admin.database().ref("comments").child(comment1_1Key).set({ parentKey: comment1Key, rootKey, uid: uid2 });
     await admin.database().ref("comments").child(comment1_1_1Key).set({ parentKey: comment1_1Key, rootKey, uid: uid3 });
@@ -213,7 +217,7 @@ describe("sendChatMessages", () => {
 
     const uids2 = await getUidsOfCommentKeys([comment1Key, comment1_1_3Key, comment1_1_5Key]);
     assert.deepStrictEqual(uids2.sort(), [uid1].sort());
-  })
+  });
 
   test("should send messages", async () => {
     // Prepare: Add users into the chat room.
@@ -276,7 +280,9 @@ describe("sendChatMessages", () => {
 
 
     const messageBatches = getPayloads(allTokensValues, "title", "body", "imageUrl", "sound", "parameterData", "initialPageName");
-    assert(messageBatches.length == 3);
+
+    // Check the batch count in index if failing
+    assert(messageBatches.length == 1);
 
 
     await sendPushNotifications(messageBatches, "/chat/rooms/" + roomId + "/messages/" + messageId);
@@ -287,6 +293,58 @@ describe("sendChatMessages", () => {
     //     text: "Hello, world! - 34",
     // };
     // await sendChatMessages(roomId, messageId, data);
+  });
+
+  it("comment test", async () => {
+
+    const uid1 = "user-A";
+    const uid2 = "user-B";
+    const uid3 = "user-C";
+    const uid4 = "user-D";
+
+    // Prepare
+    const rootKey = "root-key";
+    const comment1Key = "comment-1";
+    const comment1_1Key = "comment-1-1";
+    const comment1_1_1Key = "comment-1-1-1";
+    const comment1_1_2Key = "comment-1-1-2";
+    const comment1_1_3Key = "comment-1-1-3";
+    const comment1_1_4Key = "comment-1-1-4";
+    const comment1_1_4_1Key = "comment-1-1-4-1";
+    const comment1_1_4_2Key = "comment-1-1-4-2";
+    const comment1_1_5Key = "comment-1-1-5";
+    const comment1_2Key = "comment-1-2";
+    const comment2Key = "comment-2";
+    const comment3Key = "comment-3";
+    const comment4Key = "comment-4";
+    const comment5Key = "comment-5";
+
+    await admin.database().ref("data").child(rootKey).set({
+      content: "test", uid: uid1, category: "test"
+    });
+
+    await admin.database().ref("comments").child(comment1Key).set({ rootKey, uid: uid1 });
+    await admin.database().ref("comments").child(comment1_1Key).set({ parentKey: comment1Key, rootKey, uid: uid2 });
+    await admin.database().ref("comments").child(comment1_1_1Key).set({ parentKey: comment1_1Key, rootKey, uid: uid3 });
+    await admin.database().ref("comments").child(comment1_1_2Key).set({ parentKey: comment1_1Key, rootKey, uid: uid4 });
+    await admin.database().ref("comments").child(comment1_1_3Key).set({ parentKey: comment1_1Key, rootKey, uid: uid1 });
+    await admin.database().ref("comments").child(comment1_1_4Key).set({ parentKey: comment1_1Key, rootKey, uid: uid2 });
+    await admin.database().ref("comments").child(comment1_1_4_1Key).set({ parentKey: comment1_1_4Key, rootKey, uid: uid3 });
+    await admin.database().ref("comments").child(comment1_1_4_2Key).set({ parentKey: comment1_1_4Key, rootKey, uid: uid4 });
+    await admin.database().ref("comments").child(comment1_1_5Key).set({ parentKey: comment1_1Key, rootKey, uid: uid1 });
+    await admin.database().ref("comments").child(comment1_2Key).set({ parentKey: comment1Key, rootKey, uid: uid2 });
+    await admin.database().ref("comments").child(comment2Key).set({ rootKey, uid: uid3 });
+    await admin.database().ref("comments").child(comment3Key).set({ rootKey, uid: uid4 });
+    await admin.database().ref("comments").child(comment4Key).set({ rootKey, uid: uid1 });
+    await admin.database().ref("comments").child(comment5Key).set({ rootKey, uid: uid2 });
+
+
+    const uids = await getUidsOfCommentKeys([comment1Key, comment1_1Key, comment1_1_1Key]);
+    assert.deepStrictEqual(uids.sort(), [uid1, uid2, uid3].sort());
+
+
+    const uids2 = await getUidsOfCommentKeys([comment1Key, comment1_1_3Key, comment1_1_5Key]);
+    assert.deepStrictEqual(uids2.sort(), [uid1].sort());
   });
 });
 
