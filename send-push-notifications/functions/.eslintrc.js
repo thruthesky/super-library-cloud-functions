@@ -18,6 +18,7 @@ module.exports = {
     "indent": ["error", 2],
     "no-console": "off",
     "object-curly-spacing": "off",
+    "camelcase": "off",
   },
   overrides: [
     {

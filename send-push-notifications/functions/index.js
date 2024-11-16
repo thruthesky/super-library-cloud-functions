@@ -20,7 +20,6 @@ const admin = require("firebase-admin");
 //
 // const region = "asia-southeast1";
 
-
 // Get the region from the user and set it as a global option
 setGlobalOptions({
   region: defineString("REGION"),
@@ -135,6 +134,7 @@ exports.pushNotificationOnData = onValueCreated({
 exports.pushNotificationOnComment = onValueCreated({
   ref: "comments/{commentId}",
   // region: region,
+  region: "us-central1",
 }, async (event) => {
   console.log("pushNotificationOnComment() begins;", event);
 
@@ -175,7 +175,6 @@ const getUserTokens = async (uids) => {
 };
 
 const notifyParentCommentersAndOwnerOfData = async (commentId, data) => {
-
   // Using individual properties from 'data'
   const rootKey = data.rootKey;
   const parentKey = data.parentKey;
@@ -192,7 +191,7 @@ const notifyParentCommentersAndOwnerOfData = async (commentId, data) => {
 
   // Get the uids of the ancestor keys and user tokens
   const uidsToNotify = [...new Set((await getUidsOfCommentKeys(ancestorKeys))
-    .filter(uidInArray => uidInArray !== uid))];
+    .filter((uidInArray) => uidInArray !== uid))];
 
   const userTokensPromises = uidsToNotify.map(getUserTokens);
 
@@ -200,8 +199,8 @@ const notifyParentCommentersAndOwnerOfData = async (commentId, data) => {
   const allTokens = await Promise.all([
     getUserTokens(dataOwnerUid != uid ? dataOwnerUid : ""),
     ...userTokensPromises,
-  ]).then(tokens => tokens.flat())                            // Flatten the array
-    .then(flattenedTokens => [...new Set(flattenedTokens)]);  // Remove duplicates using Set
+  ]).then((tokens) => tokens.flat()) // Flatten the array
+    .then((flattenedTokens) => [...new Set(flattenedTokens)]); // Remove duplicates using Set
 
   if (!allTokens.length) {
     if (debugLog) console.log("No tokens found for commenter:", allTokens);
@@ -216,7 +215,7 @@ const notifyParentCommentersAndOwnerOfData = async (commentId, data) => {
   // Prepare notification data
   const title = `${commenterName} commented on your post`.substring(0, 100);
   const body = (content || "...").substring(0, 100);
-  const imageUrl = urls?.[0] || ""; // Use the first URL, if exists
+  const imageUrl = urls && urls[0] ? urls[0] : ""; // Use the first URL, if exists
   const sound = notification_sound || "";
   const category = rootKey ? (await admin.database().ref("data").child(rootKey).child("category").get()).val() : "";
 
@@ -228,11 +227,7 @@ const notifyParentCommentersAndOwnerOfData = async (commentId, data) => {
 
   // Send the notifications
   await sendPushNotifications(messageBatches, `/comments/${commentId}`);
-
-}
-
-
-
+};
 
 /**
  * Gets the parent's parent's parent's... key, a.k.a. ancestor keys
