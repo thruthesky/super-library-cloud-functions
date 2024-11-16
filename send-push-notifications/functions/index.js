@@ -8,14 +8,31 @@
  */
 
 const { onValueCreated } = require("firebase-functions/v2/database");
+const { defineString } = require("firebase-functions/params");
+const { setGlobalOptions } = require("firebase-functions/v2");
 
 const admin = require("firebase-admin");
 
+// Region
+// You may not need to set the region by defining it here.
+// For FlutterFlow, the region is set in the FlutterFlow UI.
+// For Deploying from CLI, you can set the region with the [defineString].
+//
 // const region = "asia-southeast1";
 
 
-// 500 is good for the production.
-const batchCount = 3;
+// Get the region from the user and set it as a global option
+setGlobalOptions({
+  region: defineString("REGION"),
+});
+
+if (admin.apps.length === 0) {
+  admin.initializeApp();
+}
+
+
+// 500 is good for the production. 3 is good for the testing.
+const batchCount = 500;
 const debugLog = true;
 
 
@@ -36,7 +53,7 @@ exports.pushNotificationOnChatMessage = onValueCreated(
      * | "europe-west6" | "northamerica-northeast1" | "southamerica-east1"
      * | "us-west2" | "us-west3" | "us-west4"
      */
-    // region: "asia-southeast1",
+    // region: region,
 
     // Memory options: "128MiB" | "256MiB" | "512MiB"
     // | "1GiB" | "2GiB" | "4GiB" | "8GiB" | "16GiB" | "32GiB"
@@ -83,6 +100,7 @@ exports.pushNotificationOnChatMessage = onValueCreated(
 
 exports.pushNotificationOnData = onValueCreated({
   ref: "data/{dataKey}",
+  // region: region,
 }, async (event) => {
   console.log("pushNotificationOnData() begins;", event);
 
@@ -94,6 +112,7 @@ exports.pushNotificationOnData = onValueCreated({
 
 exports.pushNotificationOnComment = onValueCreated({
   ref: "comment/{commentId}",
+  // region: region,
 }, async (event) => {
   console.log("pushNotificationOnComment() begins;", event);
 
@@ -107,6 +126,7 @@ exports.pushNotificationOnComment = onValueCreated({
 
 exports.pushNotificationOnLike = onValueCreated({
   ref: "like/{likeId}",
+  // region: region,
 }, async (event) => {
   console.log("pushNotificationOnLike() begins;", event);
 });
