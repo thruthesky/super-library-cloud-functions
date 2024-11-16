@@ -63,6 +63,14 @@ if (admin.apps.length === 0) {
   });
 }
 
+// Utility function to wait for a specified number of milliseconds
+const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+function generateRandomFourDigitNumber() {
+  const randomNum = Math.floor(Math.random() * 10000); // Generates a number from 0 to 9999
+  return randomNum.toString().padStart(4, '0'); // Pads the number to ensure it's 4 digits
+}
+
 
 describe("sendChatMessages", () => {
   it("Should get chat room unnsubscribed users", async () => {
@@ -295,56 +303,413 @@ describe("sendChatMessages", () => {
     // await sendChatMessages(roomId, messageId, data);
   });
 
-  it("comment test", async () => {
+  it("comment test No Push Notification for myself", async () => {
 
     const uid1 = "user-A";
     const uid2 = "user-B";
     const uid3 = "user-C";
     const uid4 = "user-D";
 
+    const randomNum = generateRandomFourDigitNumber();
+
+
     // Prepare
-    const rootKey = "root-key";
-    const comment1Key = "comment-1";
-    const comment1_1Key = "comment-1-1";
-    const comment1_1_1Key = "comment-1-1-1";
-    const comment1_1_2Key = "comment-1-1-2";
-    const comment1_1_3Key = "comment-1-1-3";
-    const comment1_1_4Key = "comment-1-1-4";
-    const comment1_1_4_1Key = "comment-1-1-4-1";
-    const comment1_1_4_2Key = "comment-1-1-4-2";
-    const comment1_1_5Key = "comment-1-1-5";
-    const comment1_2Key = "comment-1-2";
-    const comment2Key = "comment-2";
-    const comment3Key = "comment-3";
-    const comment4Key = "comment-4";
-    const comment5Key = "comment-5";
+    const rootKey = randomNum + "root-key_12";
+    const comment1Key = randomNum + "comment-1";
 
     await admin.database().ref("data").child(rootKey).set({
       content: "test", uid: uid1, category: "test"
     });
 
+
+    await admin.database().ref("comments").child(comment1Key).remove();
     await admin.database().ref("comments").child(comment1Key).set({ rootKey, uid: uid1 });
+
+    // check if there is a push notification sent
+
+    // Wait for 3 seconds
+    await wait(3000);
+
+    const result = await admin.database().ref("fcm-results").orderByChild("id").equalTo("/comments/" + comment1Key).get();
+
+    console.log("RESUUUULT!", result.val());
+    // No notification since I own both Data and Comment
+    assert.equal(Object.keys(result.val() || {}).length, 0);
+
+  });
+  it("comment test Push Notification on commenter", async () => {
+
+    const uid1 = "user-A";
+    const uid2 = "user-B";
+    const uid3 = "user-C";
+    const uid4 = "user-D";
+
+    const randomNum = generateRandomFourDigitNumber();
+
+
+    // Prepare
+    const rootKey = randomNum + "root-key_12";
+    const comment1Key = randomNum + "comment-1";
+    const comment1_1Key = randomNum + "comment-1-1";
+
+    await admin.database().ref("data").child(rootKey).set({
+      content: "test", uid: uid1, category: "test"
+    });
+
+
+    await admin.database().ref("comments").child(comment1Key).remove();
+    await admin.database().ref("comments").child(comment1Key).set({ rootKey, uid: uid3 });
+
+    await admin.database().ref("comments").child(comment1_1Key).remove();
     await admin.database().ref("comments").child(comment1_1Key).set({ parentKey: comment1Key, rootKey, uid: uid2 });
+
+    // check if there is a push notification sent
+
+    // Wait for 3 seconds
+    await wait(8000);
+
+    const result = await admin.database().ref("fcm-results").orderByChild("id").equalTo("/comments/" + comment1_1Key).get();
+
+    console.log("RESUUUULT!", result.val());
+
+    // Access the first object in the data (since there's only one key)
+    const firstResult = Object.values(result.val())[0];
+
+    // Access the num_failed property of the first object
+    const numFailed = firstResult.num_failed;
+    const numSent = firstResult.num_sent;
+
+    // Must send notification to uid-A as data owner (2 tokens), and uid-C (2 tokens), not including uid-B (3 tokens)
+    assert.equal(numFailed + numSent, 4);
+
+  });
+
+
+  it("comment test Data Owner must be notified", async () => {
+
+    const uid1 = "user-A";
+    const uid2 = "user-B";
+    const uid3 = "user-C";
+    const uid4 = "user-D";
+
+    const randomNum = generateRandomFourDigitNumber();
+
+
+    // Prepare
+    const rootKey = randomNum + "root-key_12";
+    const comment1Key = randomNum + "comment-1";
+    const comment1_1Key = randomNum + "comment-1-1";
+
+    await admin.database().ref("data").child(rootKey).set({
+      content: "test", uid: uid1, category: "test"
+    });
+
+
+    await admin.database().ref("comments").child(comment1Key).remove();
+    await admin.database().ref("comments").child(comment1Key).set({ rootKey, uid: uid2 });
+
+
+    // check if there is a push notification sent
+
+    // Wait for 3 seconds
+    await wait(8000);
+
+    const result = await admin.database().ref("fcm-results").orderByChild("id").equalTo("/comments/" + comment1Key).get();
+
+    console.log("RESUUUULT!", result.val());
+
+    // Access the first object in the data (since there's only one key)
+    const firstResult = Object.values(result.val())[0];
+
+    // Access the num_failed property of the first object
+    const numFailed = firstResult.num_failed;
+    const numSent = firstResult.num_sent;
+
+    // Must send notification to uid-A (2 tokens), not including uid-B (3 tokens)
+    assert.equal(numFailed + numSent, 2);
+
+  });
+
+
+  it("comment test 3", async () => {
+
+    const uid1 = "user-A";
+    const uid2 = "user-B";
+    const uid3 = "user-C";
+    const uid4 = "user-D";
+
+    const randomNum = generateRandomFourDigitNumber();
+
+
+    // Prepare
+    const rootKey = randomNum + "root-key_12";
+    const comment1Key = randomNum + "comment-1";
+    const comment1_1Key = randomNum + "comment-1-1";
+    const comment1_1_1Key = randomNum + "comment-1-1-1";
+    const comment1_1_2Key = randomNum + "comment-1-1-2";
+    const comment1_1_3Key = randomNum + "comment-1-1-3";
+    const comment1_1_4Key = randomNum + "comment-1-1-4";
+
+    await admin.database().ref("data").child(rootKey).set({
+      content: "test", uid: uid1, category: "test"
+    });
+
+    await admin.database().ref("comments").child(comment1Key).remove();
+    await admin.database().ref("comments").child(comment1Key).set({ rootKey, uid: uid1 });
+
+    await admin.database().ref("comments").child(comment1_1Key).remove();
+    await admin.database().ref("comments").child(comment1_1Key).set({ parentKey: comment1Key, rootKey, uid: uid2 });
+
+    await admin.database().ref("comments").child(comment1_1_1Key).remove();
     await admin.database().ref("comments").child(comment1_1_1Key).set({ parentKey: comment1_1Key, rootKey, uid: uid3 });
+
+    await admin.database().ref("comments").child(comment1_1_2Key).remove();
     await admin.database().ref("comments").child(comment1_1_2Key).set({ parentKey: comment1_1Key, rootKey, uid: uid4 });
+
+    await admin.database().ref("comments").child(comment1_1_3Key).remove();
     await admin.database().ref("comments").child(comment1_1_3Key).set({ parentKey: comment1_1Key, rootKey, uid: uid1 });
+
+    await admin.database().ref("comments").child(comment1_1_4Key).remove();
     await admin.database().ref("comments").child(comment1_1_4Key).set({ parentKey: comment1_1Key, rootKey, uid: uid2 });
-    await admin.database().ref("comments").child(comment1_1_4_1Key).set({ parentKey: comment1_1_4Key, rootKey, uid: uid3 });
-    await admin.database().ref("comments").child(comment1_1_4_2Key).set({ parentKey: comment1_1_4Key, rootKey, uid: uid4 });
-    await admin.database().ref("comments").child(comment1_1_5Key).set({ parentKey: comment1_1Key, rootKey, uid: uid1 });
-    await admin.database().ref("comments").child(comment1_2Key).set({ parentKey: comment1Key, rootKey, uid: uid2 });
-    await admin.database().ref("comments").child(comment2Key).set({ rootKey, uid: uid3 });
-    await admin.database().ref("comments").child(comment3Key).set({ rootKey, uid: uid4 });
-    await admin.database().ref("comments").child(comment4Key).set({ rootKey, uid: uid1 });
-    await admin.database().ref("comments").child(comment5Key).set({ rootKey, uid: uid2 });
+
+    // check if there is a push notification sent
+
+    // Wait for 3 seconds
+    await wait(3000);
+
+    const result = await admin.database().ref("fcm-results").orderByChild("id").equalTo("/comments/" + comment1_1_2Key).get();
+
+    // Access the first object in the data (since there's only one key)
+    const firstResult = Object.values(result.val())[0];
+
+    // Access the num_failed property of the first object
+    const numFailed = firstResult.num_failed;
+    const numSent = firstResult.num_sent;
+
+    // Should notify uid-A (2 tokens) and uid-B (3 tokens), not including uid-D (2 tokens)
+    // Total expected is 5 tokens
+    assert.equal(numFailed + numSent, 5);
+  });
 
 
-    const uids = await getUidsOfCommentKeys([comment1Key, comment1_1Key, comment1_1_1Key]);
-    assert.deepStrictEqual(uids.sort(), [uid1, uid2, uid3].sort());
+  it("comment test 4", async () => {
+
+    const uid1 = "user-A";
+    const uid2 = "user-B";
+    const uid3 = "user-C";
+    const uid4 = "user-D";
+
+    const randomNum = generateRandomFourDigitNumber();
 
 
-    const uids2 = await getUidsOfCommentKeys([comment1Key, comment1_1_3Key, comment1_1_5Key]);
-    assert.deepStrictEqual(uids2.sort(), [uid1].sort());
+    // Prepare
+    const rootKey = randomNum + "root-key_12";
+    const comment1Key = randomNum + "comment-1";
+    const comment1_1Key = randomNum + "comment-1-1";
+    const comment1_1_1Key = randomNum + "comment-1-1-1";
+    const comment1_1_2Key = randomNum + "comment-1-1-2";
+    const comment1_1_3Key = randomNum + "comment-1-1-3";
+    const comment1_1_4Key = randomNum + "comment-1-1-4";
+    const comment1_1_2_1Key = randomNum + "comment-1-1-2-1";
+
+    await admin.database().ref("data").child(rootKey).set({
+      content: "test", uid: uid1, category: "test"
+    });
+
+    await admin.database().ref("comments").child(comment1Key).remove();
+    await admin.database().ref("comments").child(comment1Key).set({ rootKey, uid: uid1 });
+
+    await admin.database().ref("comments").child(comment1_1Key).remove();
+    await admin.database().ref("comments").child(comment1_1Key).set({ parentKey: comment1Key, rootKey, uid: uid2 });
+
+    await admin.database().ref("comments").child(comment1_1_1Key).remove();
+    await admin.database().ref("comments").child(comment1_1_1Key).set({ parentKey: comment1_1Key, rootKey, uid: uid3 });
+
+    await admin.database().ref("comments").child(comment1_1_2Key).remove();
+    await admin.database().ref("comments").child(comment1_1_2Key).set({ parentKey: comment1_1Key, rootKey, uid: uid4 });
+
+    await admin.database().ref("comments").child(comment1_1_3Key).remove();
+    await admin.database().ref("comments").child(comment1_1_3Key).set({ parentKey: comment1_1Key, rootKey, uid: uid1 });
+
+    await admin.database().ref("comments").child(comment1_1_4Key).remove();
+    await admin.database().ref("comments").child(comment1_1_4Key).set({ parentKey: comment1_1Key, rootKey, uid: uid2 });
+
+
+    await admin.database().ref("comments").child(comment1_1_2_1Key).remove();
+    await admin.database().ref("comments").child(comment1_1_2_1Key).set({ parentKey: comment1_1_2Key, rootKey, uid: uid3 });
+
+
+
+    // check if there is a push notification sent
+
+    // Wait for 3 seconds
+    await wait(3000);
+
+    const result = await admin.database().ref("fcm-results").orderByChild("id").equalTo("/comments/" + comment1_1_2_1Key).get();
+
+    // Access the first object in the data (since there's only one key)
+    const firstResult = Object.values(result.val())[0];
+
+    // Access the num_failed property of the first object
+    const numFailed = firstResult.num_failed;
+    const numSent = firstResult.num_sent;
+
+    // Should notify uid-A (2 tokens), uid-B (3 tokens), and uid-D (2 tokens), not including uid-C (2-tokens)
+    // Total expected is 7 tokens
+    assert.equal(numFailed + numSent, 7);
+  });
+
+
+  it("comment test 5", async () => {
+
+    const uid1 = "user-A";
+    const uid2 = "user-B";
+    const uid3 = "user-C";
+    const uid4 = "user-D";
+
+    const randomNum = generateRandomFourDigitNumber();
+
+
+    // Prepare
+    const rootKey = randomNum + "root-key_12";
+    const comment1Key = randomNum + "comment-1";
+    const comment1_1Key = randomNum + "comment-1-1";
+    const comment1_1_1Key = randomNum + "comment-1-1-1";
+    const comment1_1_2Key = randomNum + "comment-1-1-2";
+    const comment1_1_3Key = randomNum + "comment-1-1-3";
+    const comment1_1_4Key = randomNum + "comment-1-1-4";
+    const comment1_1_2_1Key = randomNum + "comment-1-1-2-1";
+    const comment1_1_2_1_1Key = randomNum + "comment-1-1-2-1-1";
+
+
+    await admin.database().ref("data").child(rootKey).set({
+      content: "test", uid: uid1, category: "test"
+    });
+
+    await admin.database().ref("comments").child(comment1Key).remove();
+    await admin.database().ref("comments").child(comment1Key).set({ rootKey, uid: uid1 });
+
+    await admin.database().ref("comments").child(comment1_1Key).remove();
+    await admin.database().ref("comments").child(comment1_1Key).set({ parentKey: comment1Key, rootKey, uid: uid2 });
+
+    await admin.database().ref("comments").child(comment1_1_1Key).remove();
+    await admin.database().ref("comments").child(comment1_1_1Key).set({ parentKey: comment1_1Key, rootKey, uid: uid3 });
+
+    await admin.database().ref("comments").child(comment1_1_2Key).remove();
+    await admin.database().ref("comments").child(comment1_1_2Key).set({ parentKey: comment1_1Key, rootKey, uid: uid4 });
+
+    await admin.database().ref("comments").child(comment1_1_3Key).remove();
+    await admin.database().ref("comments").child(comment1_1_3Key).set({ parentKey: comment1_1Key, rootKey, uid: uid1 });
+
+    await admin.database().ref("comments").child(comment1_1_4Key).remove();
+    await admin.database().ref("comments").child(comment1_1_4Key).set({ parentKey: comment1_1Key, rootKey, uid: uid2 });
+
+
+    await admin.database().ref("comments").child(comment1_1_2_1Key).remove();
+    await admin.database().ref("comments").child(comment1_1_2_1Key).set({ parentKey: comment1_1_2Key, rootKey, uid: uid3 });
+
+
+    await admin.database().ref("comments").child(comment1_1_2_1_1Key).remove();
+    await admin.database().ref("comments").child(comment1_1_2_1_1Key).set({ parentKey: comment1_1_2_1Key, rootKey, uid: uid2 });
+
+
+
+    // check if there is a push notification sent
+
+    // Wait for 3 seconds
+    await wait(3000);
+
+    const result = await admin.database().ref("fcm-results").orderByChild("id").equalTo("/comments/" + comment1_1_2_1_1Key).get();
+
+    // Access the first object in the data (since there's only one key)
+    const firstResult = Object.values(result.val())[0];
+
+    // Access the num_failed property of the first object
+    const numFailed = firstResult.num_failed;
+    const numSent = firstResult.num_sent;
+
+    // Should notify uid-A (2 tokens), uid-C (2 tokens), and uid-D (2 tokens), not including uid-B (3-tokens)
+    // Total expected is 6 tokens
+    assert.equal(numFailed + numSent, 6);
+  });
+
+
+  it("comment test 6", async () => {
+
+    const uid1 = "user-A";
+    const uid2 = "user-B";
+    const uid3 = "user-C";
+    const uid4 = "user-D";
+
+    const randomNum = generateRandomFourDigitNumber();
+
+
+    // Prepare
+    const rootKey = randomNum + "root-key_12";
+    const comment1Key = randomNum + "comment-1";
+    const comment1_1Key = randomNum + "comment-1-1";
+    const comment1_1_1Key = randomNum + "comment-1-1-1";
+    const comment1_1_2Key = randomNum + "comment-1-1-2";
+    const comment1_1_3Key = randomNum + "comment-1-1-3";
+    const comment1_1_4Key = randomNum + "comment-1-1-4";
+    const comment1_1_2_1Key = randomNum + "comment-1-1-2-1";
+    const comment1_1_2_1_1Key = randomNum + "comment-1-1-2-1-1";
+    const comment1_1_2_1_1_1Key = randomNum + "comment-1-1-2-1-1-1";
+
+
+
+
+    await admin.database().ref("data").child(rootKey).set({
+      content: "test", uid: uid1, category: "test"
+    });
+
+    await admin.database().ref("comments").child(comment1Key).remove();
+    await admin.database().ref("comments").child(comment1Key).set({ rootKey, uid: uid1 });
+
+    await admin.database().ref("comments").child(comment1_1Key).remove();
+    await admin.database().ref("comments").child(comment1_1Key).set({ parentKey: comment1Key, rootKey, uid: uid2 });
+
+    await admin.database().ref("comments").child(comment1_1_1Key).remove();
+    await admin.database().ref("comments").child(comment1_1_1Key).set({ parentKey: comment1_1Key, rootKey, uid: uid3 });
+
+    await admin.database().ref("comments").child(comment1_1_2Key).remove();
+    await admin.database().ref("comments").child(comment1_1_2Key).set({ parentKey: comment1_1Key, rootKey, uid: uid4 });
+
+    await admin.database().ref("comments").child(comment1_1_3Key).remove();
+    await admin.database().ref("comments").child(comment1_1_3Key).set({ parentKey: comment1_1Key, rootKey, uid: uid1 });
+
+    await admin.database().ref("comments").child(comment1_1_4Key).remove();
+    await admin.database().ref("comments").child(comment1_1_4Key).set({ parentKey: comment1_1Key, rootKey, uid: uid2 });
+
+
+    await admin.database().ref("comments").child(comment1_1_2_1Key).remove();
+    await admin.database().ref("comments").child(comment1_1_2_1Key).set({ parentKey: comment1_1_2Key, rootKey, uid: uid3 });
+
+
+    await admin.database().ref("comments").child(comment1_1_2_1_1Key).remove();
+    await admin.database().ref("comments").child(comment1_1_2_1_1Key).set({ parentKey: comment1_1_2_1Key, rootKey, uid: uid2 });
+
+
+    await admin.database().ref("comments").child(comment1_1_2_1_1_1Key).remove();
+    await admin.database().ref("comments").child(comment1_1_2_1_1_1Key).set({ parentKey: comment1_1_2_1_1Key, rootKey, uid: uid1 });
+
+    // check if there is a push notification sent
+
+    // Wait for 3 seconds
+    await wait(3000);
+
+    const result = await admin.database().ref("fcm-results").orderByChild("id").equalTo("/comments/" + comment1_1_2_1_1_1Key).get();
+
+    // Access the first object in the data (since there's only one key)
+    const firstResult = Object.values(result.val())[0];
+
+    // Access the num_failed property of the first object
+    const numFailed = firstResult.num_failed;
+    const numSent = firstResult.num_sent;
+
+    // Should notify uid-B (3-tokens), uid-C (2 tokens), and uid-D (2 tokens), not including uid-A (2 tokens)
+    // Total expected is 7 tokens
+    assert.equal(numFailed + numSent, 7);
   });
 });
 

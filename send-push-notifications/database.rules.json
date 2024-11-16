@@ -136,6 +136,11 @@
                 }
             }
         },
+        "fcm-results": {
+            ".read": true,
+            ".indexOn": ["id"]
+        },
+
         "settings": {
           ".read": true,
           ".write": true

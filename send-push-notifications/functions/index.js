@@ -22,15 +22,15 @@ const admin = require("firebase-admin");
 
 
 // Get the region from the user and set it as a global option
-// setGlobalOptions({
-//   region: defineString("REGION"),
-// });
+setGlobalOptions({
+  region: defineString("REGION"),
+});
 
-// if (admin.apps.length === 0) {
-//   admin.initializeApp();
-// }
+if (admin.apps.length === 0) {
+  admin.initializeApp();
+}
 
-
+// FOR TESTING
 // if (admin.apps.length === 0) {
 //   admin.initializeApp({
 //     databaseURL: "http://127.0.0.1:9000/?ns=withcenter-test-4-default-rtdb",
@@ -160,6 +160,7 @@ exports.pushNotificationOnLike = onValueCreated({
  * @return {Promise<string[]>} returnx
  */
 const getUserTokens = async (uids) => {
+  if (!uids) return [];
   uids = Array.isArray(uids) ? uids : [uids];
 
   const tokens = [];
@@ -174,70 +175,62 @@ const getUserTokens = async (uids) => {
 };
 
 const notifyParentCommentersAndOwnerOfData = async (commentId, data) => {
-  // const parentKey = data.parentKey;
+
+  // Using individual properties from 'data'
   const rootKey = data.rootKey;
   const parentKey = data.parentKey;
+  const uid = data.uid;
+  const content = data.content;
+  const notification_sound = data.notification_sound;
+  const urls = data.urls;
 
-  // Get the parent's parent's parent's... keys, a.k.a. ancestorKeys.
+  // Get the parent's parent's parent's... keys (ancestor keys)
   const ancestorKeys = await getAncestorKeys(parentKey);
 
-  let dataOwnerUid = "";
-  if (rootKey) {
-    const dataOwnerUidSnapshot = await admin.database().ref("data").child(rootKey).child("uid").get();
-    dataOwnerUid = dataOwnerUidSnapshot.val();
-  }
+  // Get the data owner UID, if rootKey exists
+  const dataOwnerUid = rootKey ? (await admin.database().ref("data").child(rootKey).child("uid").get()).val() : "";
 
-  // Get the uids of the ancestor keys
-  const uidsToNotify = await getUidsOfCommentKeys(ancestorKeys);
+  // Get the uids of the ancestor keys and user tokens
+  const uidsToNotify = [...new Set((await getUidsOfCommentKeys(ancestorKeys))
+    .filter(uidInArray => uidInArray !== uid))];
 
-  const userTokensPromises = uidsToNotify.map(userUid => getUserTokens(userUid));
+  const userTokensPromises = uidsToNotify.map(getUserTokens);
 
-  const allCommenterTokens = await Promise.all([
-    getUserTokens(dataOwnerUid),
+  // Fetch tokens for data owner and commenters
+  const allTokens = await Promise.all([
+    getUserTokens(dataOwnerUid != uid ? dataOwnerUid : ""),
     ...userTokensPromises,
-  ]);
+  ]).then(tokens => tokens.flat())                            // Flatten the array
+    .then(flattenedTokens => [...new Set(flattenedTokens)]);  // Remove duplicates using Set
 
-  const tokens = allCommenterTokens.flat();
-
-  if (tokens.length === 0) {
-    if (debugLog) console.log("No tokens found for  commenter:", tokens);
+  if (!allTokens.length) {
+    if (debugLog) console.log("No tokens found for commenter:", allTokens);
     return;
   }
 
-  if (debugLog) console.log("TOKENS! commenter:", tokens);
+  if (debugLog) console.log("TOKENS! commenter:", allTokens);
 
-  let name = "";
-  if (data.uid) {
-    const commenterDisplayNameSnapshot = await admin.database().ref("users").child(data.uid).child("displayName").get();
-    name = commenterDisplayNameSnapshot.val() ? commenterDisplayNameSnapshot.val() : "";
-  }
+  // Get commenter name, fallback to "Someone"
+  const commenterName = uid ? (await admin.database().ref("users").child(uid).child("displayName").get()).val() || "Someone" : "Someone";
 
-  const title = ((name || "Someone") + " commented on your post").substring(0, 100);
-  const body = (data.content || "...").substring(0, 100);
-  // TODO: Add user's profile photo url if there is no image url.
-  // TODO: what if the urls[0] is not an image?
-  let imageUrl = "";
-  if (data.urls && data.urls.length > 0) {
-    imageUrl = data.urls[0];
-  }
-  const sound = data.notification_sound || "";
-
-  let category;
-  if (rootKey) {
-    const categorySnapshot = await admin.database().ref("data").child(rootKey).child("category").get();
-    category = categorySnapshot.val();
-  }
+  // Prepare notification data
+  const title = `${commenterName} commented on your post`.substring(0, 100);
+  const body = (content || "...").substring(0, 100);
+  const imageUrl = urls?.[0] || ""; // Use the first URL, if exists
+  const sound = notification_sound || "";
+  const category = rootKey ? (await admin.database().ref("data").child(rootKey).child("category").get()).val() : "";
 
   const parameterData = JSON.stringify({ category, rootKey });
   const initialPageName = "DataDetailScreen";
 
-  // Batch them
-  const messageBatches = getPayloads(tokens, title, body, imageUrl, sound, parameterData, initialPageName);
+  // Prepare notification payloads
+  const messageBatches = getPayloads(allTokens, title, body, imageUrl, sound, parameterData, initialPageName);
 
-  // Send Notification
-  await sendPushNotifications(messageBatches, "/comments/" + commentId);
+  // Send the notifications
+  await sendPushNotifications(messageBatches, `/comments/${commentId}`);
 
 }
+
 
 
 
@@ -250,12 +243,8 @@ const getAncestorKeys = async (parentKey) => {
   const ancestorKeys = [];
   let _parentKey = parentKey;
   while (_parentKey != null) {
-    // TODO optimization
     ancestorKeys.push(_parentKey);
     console.log("parentKey: ", _parentKey);
-
-    // TODO, Is this the right way, get them one by one?
-    // TODO look for better way
     // get parent key one by one
     const parentKeySnapshot = await admin.database().ref("comments").child(_parentKey).child("parentKey").get();
     _parentKey = parentKeySnapshot.val();
@@ -499,7 +488,7 @@ const sendPushNotifications = async (messageBatches, id) => {
 
 exports.getChatRoomUsers = getChatRoomUsers;
 exports.notifyDataCategorySubscribers = notifyDataCategorySubscribers;
-// exports.notifyParentCommentersAndOwnerOfData = notifyParentCommentersAndOwnerOfData;
+exports.notifyParentCommentersAndOwnerOfData = notifyParentCommentersAndOwnerOfData;
 exports.getAncestorKeys = getAncestorKeys;
 exports.getUidsOfCommentKeys = getUidsOfCommentKeys;
 exports.getUserTokens = getUserTokens;
