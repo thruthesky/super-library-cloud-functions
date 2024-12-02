@@ -1,4 +1,4 @@
 # Super Library Firebase
 
-Refer the super library document for details
+Refer the super library document for detailss
 
